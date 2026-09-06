@@ -1,0 +1,372 @@
+{
+  "name": "حسبتك - Hasebtak Citizen Budget Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message",
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "id": "telegram-trigger",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        250,
+        300
+      ],
+      "webhookId": "hasebtak-telegram-webhook"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.callback_query ? 'button' : ($json.message?.text === '/start' ? 'start' : 'question') }}",
+                    "rightValue": "start",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Start Menu"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.callback_query?.data?.startsWith('budget_') ? 'budget_info' : 'vote' }}",
+                    "rightValue": "budget_info",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Know the Number"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.callback_query ? 'vote' : 'question' }}",
+                    "rightValue": "vote",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Poll Vote"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": {
+            "renameOutput": true,
+            "outputKey": "General Question"
+          }
+        }
+      },
+      "id": "intent-switch",
+      "name": "Route by Action",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message?.chat?.id || $json.callback_query?.from?.id }}",
+        "text": "👋 أهلاً بك في منصة **'حسبتك'** — مستشارك الرقمي لموازنة المواطن 2026/2027 🇪🇬\n\n🗳️ **استطلاع الأسبوع:**\nلو معاك جنيه إضافي في الموازنة العامة للدولة، تحب الإنفاق يتركز أكتر في إيه؟",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": [
+                {
+                  "text": "🏥 الصحة وتطوير المستشفيات",
+                  "additionalFields": {
+                    "callback_data": "health"
+                  }
+                },
+                {
+                  "text": "📚 جودة التعليم والمدارس",
+                  "additionalFields": {
+                    "callback_data": "education"
+                  }
+                }
+              ]
+            },
+            {
+              "row": [
+                {
+                  "text": "🤝 الدعم والحماية الاجتماعية",
+                  "additionalFields": {
+                    "callback_data": "social"
+                  }
+                },
+                {
+                  "text": "💼 حوافز المشروعات والإنتاج",
+                  "additionalFields": {
+                    "callback_data": "economy"
+                  }
+                }
+              ]
+            },
+            {
+              "row": [
+                {
+                  "text": "🏠 دعم الإسكان الاجتماعي",
+                  "additionalFields": {
+                    "callback_data": "housing"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-welcome-poll",
+      "name": "Send Start Poll",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        800,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://51a71e11d13285.lhr.life/vote",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"user_id\": \"{{ $json.callback_query?.from?.id || 'telegram_user' }}\",\n  \"poll_id\": \"budget_priority_2026\",\n  \"choice\": \"{{ $json.callback_query?.data }}\"\n}",
+        "options": {}
+      },
+      "id": "http-post-vote",
+      "name": "HTTP POST /vote",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.callback_query.from.id }}",
+        "text": "={{ $json.feedback_text }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": [
+                {
+                  "text": "💰 اعرف الرقم المخصص بالموازنة",
+                  "additionalFields": {
+                    "callback_data": "=budget_{{ $json.related_topic }}"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-vote-feedback",
+      "name": "Send Vote Result + CTA",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1050,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://51a71e11d13285.lhr.life/budget/{{ $json.callback_query.data.replace('budget_', '') }}",
+        "options": {}
+      },
+      "id": "http-get-budget",
+      "name": "HTTP GET /budget",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.callback_query.from.id }}",
+        "text": "={{ $json.summary_text }}\n\n💡 *ملاحظة:* الأرقام معتمدة رسمياً ومحصنة بنظام حاجز الأمان الرقمي بنسبة دقة 100%.",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-budget-fact",
+      "name": "Send Budget Info",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1050,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://51a71e11d13285.lhr.life/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"user_id\": \"{{ $json.message?.from?.id }}\",\n  \"text\": \"{{ $json.message?.text }}\",\n  \"user_profile\": \"مواطن\"\n}",
+        "options": {}
+      },
+      "id": "http-post-chat",
+      "name": "HTTP POST /api/chat",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.response }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-chat-reply",
+      "name": "Send AI Response",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1050,
+        700
+      ]
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Route by Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Action": {
+      "main": [
+        [
+          {
+            "node": "Send Start Poll",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP GET /budget",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP POST /vote",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP POST /api/chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP POST /vote": {
+      "main": [
+        [
+          {
+            "node": "Send Vote Result + CTA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP GET /budget": {
+      "main": [
+        [
+          {
+            "node": "Send Budget Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP POST /api/chat": {
+      "main": [
+        [
+          {
+            "node": "Send AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

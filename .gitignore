@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Environment and secrets (CRITICAL: never commit .env)
+.env
+
+# Local vector database
+chroma_db/
+
+# Local cache & temp files
+temp_audio/
+*.log
+.DS_Store
+
+# Data source raw PDFs
+data/source_pdf/*.pdf

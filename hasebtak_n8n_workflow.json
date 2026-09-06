@@ -1,0 +1,380 @@
+{
+  "name": "حسبتك — Hasebtak Citizen Budget & Pulse Flow",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message",
+          "callback_query"
+        ]
+      },
+      "id": "node-tg-trigger",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "hasebtak-telegram-webhook"
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.callback_query ? 'callback' : ($json.message.text.startsWith('/') ? 'command' : 'text') }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "command",
+              "output": 0
+            },
+            {
+              "value2": "callback",
+              "output": 1
+            },
+            {
+              "value2": "text",
+              "output": 2
+            }
+          ]
+        }
+      },
+      "id": "node-router",
+      "name": "Router (Command / Button / Text)",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/poll/current",
+        "options": {}
+      },
+      "id": "node-get-current-poll",
+      "name": "HTTP: Get Current Poll",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        740,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "=📊 *نبض المواطن — استطلاع الأسبوع* 🇪🇬\n\n{{ $json.question }}\n\nاختر أولويتك بضغطة واحدة:",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "🏥 تطوير المستشفيات والتأمين",
+                    "additionalFields": {
+                      "callback_data": "vote:health"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "📚 جودة التعليم والمدارس",
+                    "additionalFields": {
+                      "callback_data": "vote:education"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "🤝 برامج الدعم والتموين",
+                    "additionalFields": {
+                      "callback_data": "vote:social"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "💼 حوافز المشروعات والإنتاج",
+                    "additionalFields": {
+                      "callback_data": "vote:economy"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "🏠 الإسكان الاجتماعي",
+                    "additionalFields": {
+                      "callback_data": "vote:housing"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "id": "node-send-poll-card",
+      "name": "Send Poll Question & Buttons",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        1000,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $('Telegram Trigger').item.json.callback_query.data }}",
+              "operation": "startsWith",
+              "value2": "vote:"
+            }
+          ]
+        }
+      },
+      "id": "node-check-callback-type",
+      "name": "Is Vote or Know Number?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        740,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/vote",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"user_id\": \"{{ $('Telegram Trigger').item.json.callback_query.from.id }}\",\n  \"poll_id\": \"budget_priority_2026\",\n  \"choice\": \"{{ $('Telegram Trigger').item.json.callback_query.data.replace('vote:', '') }}\"\n}",
+        "options": {}
+      },
+      "id": "node-submit-vote",
+      "name": "HTTP: Submit Vote",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.callback_query.message.chat.id }}",
+        "text": "={{ $json.feedback_text }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "💰 اعرف الرقم المخصص في الموازنة",
+                    "additionalFields": {
+                      "callback_data": "=budget:{{ $json.related_topic }}"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "id": "node-send-vote-feedback",
+      "name": "Send Immediate Feedback & CTA",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        1240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=http://localhost:8000/budget/{{ $('Telegram Trigger').item.json.callback_query.data.replace('budget:', '') }}",
+        "options": {}
+      },
+      "id": "node-get-budget-info",
+      "name": "HTTP: Get Budget Topic",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1000,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.callback_query.message.chat.id }}",
+        "text": "=🏛️ *معلومات الموازنة الرسمية 2026/2027:*\n\n{{ $json.summary_text }}\n\n💡 *تقدر تسألني دلوقتي أي سؤال مفصل عن بنود الموازنة!*",
+        "options": {}
+      },
+      "id": "node-send-budget-result",
+      "name": "Send Budget Grounded Fact",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        1240,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"user_id\": \"{{ $('Telegram Trigger').item.json.message.from.id }}\",\n  \"text\": \"{{ $('Telegram Trigger').item.json.message.text }}\",\n  \"user_profile\": \"مواطن\"\n}",
+        "options": {}
+      },
+      "id": "node-ask-grounded-chat",
+      "name": "HTTP: Grounded AI Chat",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        740,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.response }}",
+        "options": {}
+      },
+      "id": "node-send-chat-reply",
+      "name": "Send Grounded AI Answer",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        1000,
+        600
+      ]
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Router (Command / Button / Text)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Router (Command / Button / Text)": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Get Current Poll",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Vote or Know Number?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP: Grounded AI Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Get Current Poll": {
+      "main": [
+        [
+          {
+            "node": "Send Poll Question & Buttons",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Vote or Know Number?": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Submit Vote",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP: Get Budget Topic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Submit Vote": {
+      "main": [
+        [
+          {
+            "node": "Send Immediate Feedback & CTA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Get Budget Topic": {
+      "main": [
+        [
+          {
+            "node": "Send Budget Grounded Fact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Grounded AI Chat": {
+      "main": [
+        [
+          {
+            "node": "Send Grounded AI Answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
