@@ -7,3 +7,5 @@ edge-tts>=6.1.0
 requests>=2.31.0
 httpx>=0.27.0
 nest_asyncio>=1.6.0
+streamlit>=1.35.0
+pandas>=2.2.0
