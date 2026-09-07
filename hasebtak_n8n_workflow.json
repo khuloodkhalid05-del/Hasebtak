@@ -50,7 +50,7 @@
     },
     {
       "parameters": {
-        "url": "https://event-corner-beta-tenant.trycloudflare.com/poll/current",
+        "url": "https://hasebtak.vercel.app/poll/current",
         "options": {}
       },
       "id": "node-get-current-poll",
@@ -165,7 +165,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://event-corner-beta-tenant.trycloudflare.com/vote",
+        "url": "https://hasebtak.vercel.app/vote",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"user_id\": \"{{ $('Telegram Trigger').item.json.callback_query.from.id }}\",\n  \"poll_id\": \"budget_priority_2026\",\n  \"choice\": \"{{ $('Telegram Trigger').item.json.callback_query.data.replace('vote:', '') }}\"\n}",
@@ -213,7 +213,7 @@
     },
     {
       "parameters": {
-        "url": "=https://event-corner-beta-tenant.trycloudflare.com/budget/{{ $('Telegram Trigger').item.json.callback_query.data.replace('budget:', '') }}",
+        "url": "=https://hasebtak.vercel.app/budget/{{ $('Telegram Trigger').item.json.callback_query.data.replace('budget:', '') }}",
         "options": {}
       },
       "id": "node-get-budget-info",
@@ -243,7 +243,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://event-corner-beta-tenant.trycloudflare.com/api/chat",
+        "url": "https://hasebtak.vercel.app/api/chat",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"user_id\": \"{{ $('Telegram Trigger').item.json.message.from.id }}\",\n  \"text\": \"{{ $('Telegram Trigger').item.json.message.text }}\",\n  \"user_profile\": \"مواطن\"\n}",
