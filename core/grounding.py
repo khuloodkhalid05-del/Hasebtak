@@ -32,13 +32,15 @@ class GroundingEngine:
 
     def _init_chroma(self):
         try:
-            if os.path.exists(self.chroma_dir):
+            from ingestion.embed_index import build_vector_index
+            if not os.path.exists(self.chroma_dir) or not os.listdir(self.chroma_dir):
+                self.collection = build_vector_index()
+            else:
                 self.chroma_client = chromadb.PersistentClient(path=self.chroma_dir)
                 self.collection = self.chroma_client.get_or_create_collection("hasebtak_narratives")
         except Exception as e:
             print(f"[GroundingEngine] Notice: ChromaDB initialization fallback: {e}")
             self.collection = None
-
     def lookup_facts(self, query: str, profile: Optional[str] = None, max_results: int = 5) -> List[Dict[str, Any]]:
         """
         Matches user query against verified Facts Ledger keywords, topics, and labels.

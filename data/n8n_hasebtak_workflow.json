@@ -174,7 +174,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://51a71e11d13285.lhr.life/vote",
+        "url": "https://event-corner-beta-tenant.trycloudflare.com/vote",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"user_id\": \"{{ $json.callback_query?.from?.id || 'telegram_user' }}\",\n  \"poll_id\": \"budget_priority_2026\",\n  \"choice\": \"{{ $json.callback_query?.data }}\"\n}",
@@ -224,7 +224,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "=https://51a71e11d13285.lhr.life/budget/{{ $json.callback_query.data.replace('budget_', '') }}",
+        "url": "=https://event-corner-beta-tenant.trycloudflare.com/budget/{{ $json.callback_query.data.replace('budget_', '') }}",
         "options": {}
       },
       "id": "http-get-budget",
@@ -256,7 +256,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://51a71e11d13285.lhr.life/api/chat",
+        "url": "https://event-corner-beta-tenant.trycloudflare.com/api/chat",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"user_id\": \"{{ $json.message?.from?.id }}\",\n  \"text\": \"{{ $json.message?.text }}\",\n  \"user_profile\": \"مواطن\"\n}",
