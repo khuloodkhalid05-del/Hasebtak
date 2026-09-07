@@ -9,9 +9,9 @@ import os
 import json
 import re
 from typing import List, Dict, Any, Optional
-import chromadb
 
 FACTS_LEDGER_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "facts_ledger.json")
+CHUNKS_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "report_narrative_chunks.json")
 CHROMA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "chroma_db")
 
 
@@ -20,6 +20,7 @@ class GroundingEngine:
         self.ledger_path = ledger_path
         self.chroma_dir = chroma_dir
         self.facts: List[Dict[str, Any]] = self._load_ledger()
+        self.narrative_chunks: List[Dict[str, Any]] = self._load_chunks()
         self.chroma_client = None
         self.collection = None
         self._init_chroma()
@@ -30,17 +31,21 @@ class GroundingEngine:
         with open(self.ledger_path, "r", encoding="utf-8") as f:
             return json.load(f)
 
+    def _load_chunks(self) -> List[Dict[str, Any]]:
+        if not os.path.exists(CHUNKS_PATH):
+            return []
+        with open(CHUNKS_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+
     def _init_chroma(self):
         try:
-            from ingestion.embed_index import build_vector_index
-            if not os.path.exists(self.chroma_dir) or not os.listdir(self.chroma_dir):
-                self.collection = build_vector_index()
-            else:
+            import chromadb
+            if os.path.exists(self.chroma_dir) and os.listdir(self.chroma_dir):
                 self.chroma_client = chromadb.PersistentClient(path=self.chroma_dir)
                 self.collection = self.chroma_client.get_or_create_collection("hasebtak_narratives")
-        except Exception as e:
-            print(f"[GroundingEngine] Notice: ChromaDB initialization fallback: {e}")
+        except Exception:
             self.collection = None
+
     def lookup_facts(self, query: str, profile: Optional[str] = None, max_results: int = 5) -> List[Dict[str, Any]]:
         """
         Matches user query against verified Facts Ledger keywords, topics, and labels.
@@ -113,7 +118,20 @@ class GroundingEngine:
         Retrieves top-k narrative chunks from ChromaDB.
         """
         if not self.collection:
-            return []
+            # Fallback to pure in-memory keyword matching from JSON
+            if not self.narrative_chunks:
+                return []
+            q_words = set(re.sub(r'[؟!.,:]', '', query.lower()).split())
+            scored = []
+            for c in self.narrative_chunks:
+                text = c.get("text", "").lower()
+                title = c.get("section_title_ar", "").lower()
+                topic = c.get("topic", "").lower()
+                score = sum(1 for w in q_words if w in text or w in title or w in topic)
+                if score > 0:
+                    scored.append((score, c))
+            scored.sort(key=lambda x: x[0], reverse=True)
+            return [item[1] for item in scored[:k]]
 
         try:
             results = self.collection.query(
@@ -133,7 +151,6 @@ class GroundingEngine:
                     })
             return chunks
         except Exception as e:
-            print(f"[GroundingEngine] Vector search warning: {e}")
             return []
 
     def get_grounded_context(self, query: str, profile: Optional[str] = None) -> Dict[str, Any]:
