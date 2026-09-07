@@ -11,8 +11,11 @@ import tempfile
 from typing import Optional
 import edge_tts
 
-TEMP_AUDIO_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "temp_audio")
-os.makedirs(TEMP_AUDIO_DIR, exist_ok=True)
+TEMP_AUDIO_DIR = os.path.join(tempfile.gettempdir(), "hasebtak_audio")
+try:
+    os.makedirs(TEMP_AUDIO_DIR, exist_ok=True)
+except Exception:
+    TEMP_AUDIO_DIR = tempfile.gettempdir()
 
 # Egyptian Arabic Neural Voices
 VOICE_FEMALE = "ar-EG-SalmaNeural"

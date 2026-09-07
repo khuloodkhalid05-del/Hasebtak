@@ -22,9 +22,12 @@ class PollEngine:
         self._ensure_files()
 
     def _ensure_files(self):
-        if not os.path.exists(self.votes_path):
-            with open(self.votes_path, "w", encoding="utf-8") as f:
-                json.dump([], f, ensure_ascii=False, indent=2)
+        try:
+            if not os.path.exists(self.votes_path):
+                with open(self.votes_path, "w", encoding="utf-8") as f:
+                    json.dump([], f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
 
     def _hash_user(self, user_channel_id: str) -> str:
         """One-way SHA-256 hash ensuring zero PII storage."""
