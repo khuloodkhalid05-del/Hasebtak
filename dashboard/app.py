@@ -8,8 +8,11 @@ OBS 2025 participation indicators, and budget allocation insights.
 import os
 import sys
 import json
+import base64
 import pandas as pd
 import streamlit as st
+import plotly.graph_objects as go
+import plotly.express as px
 
 # Add project root to sys.path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
@@ -18,6 +21,18 @@ from core.polls import PollEngine
 from core.grounding import GroundingEngine
 from core.router import HasebtakCore
 from core.voice import text_to_speech
+
+# Helper to encode images to base64 for reliable rendering
+def get_image_base64(filepath):
+    if os.path.exists(filepath):
+        with open(filepath, "rb") as f:
+            return base64.b64encode(f.read()).decode("utf-8")
+    return ""
+
+ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
+mof_badge_b64 = get_image_base64(os.path.join(ASSETS_DIR, "mof_badge.png"))
+trans_badge_b64 = get_image_base64(os.path.join(ASSETS_DIR, "transparency_badge.png"))
+hero_bg_b64 = get_image_base64(os.path.join(ASSETS_DIR, "mof_hero_bg.jpg"))
 
 st.set_page_config(
     page_title="حسبتك | لوحة تحكم موازنة المواطن",
@@ -29,19 +44,11 @@ st.set_page_config(
 # Custom Styling for modern Egyptian Government look
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
     * {
         font-family: 'Cairo', sans-serif;
         direction: rtl;
         text-align: right;
-    }
-    .main-header {
-        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-        color: white;
-        padding: 24px;
-        border-radius: 12px;
-        margin-bottom: 24px;
-        text-align: center;
     }
     .metric-card {
         background: #f8fafc;
@@ -77,18 +84,51 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Header
-st.markdown("""
-<div class="main-header">
-    <h1 style="color: white; margin: 0;">🇪🇬 منصة "حسبتك" — لوحة متابعة موازنة المواطن 2026/2027</h1>
-    <p style="color: #e2e8f0; margin: 8px 0 0 0; font-size: 1.1rem;">
-        المستشار الرقمي لموازنة المواطن | وزارة المالية — دعم الشفافية والمشاركة الشعبية
-    </p>
+# Official Clean Header (Right: Ministry of Finance | Center: Hasebtak Title | Left: Transparency Unit)
+bg_banner_css = f"background: linear-gradient(180deg, rgba(15, 23, 42, 0.35) 0%, rgba(15, 23, 42, 0.15) 50%, rgba(15, 23, 42, 0.65) 100%), url('data:image/jpeg;base64,{hero_bg_b64}') center 35% / cover no-repeat;" if hero_bg_b64 else "background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);"
+
+header_html = f"""
+<div style="{bg_banner_css} border: 1.5px solid rgba(217, 119, 6, 0.65); border-radius: 20px; min-height: 240px; padding: 20px 24px; margin-bottom: 24px; box-shadow: 0 14px 35px rgba(0,0,0,0.4); display: flex; flex-direction: column; justify-content: space-between; direction: rtl; position: relative;">
+    <!-- Top Row: ONLY the two circular logos (Right: MOF, Left: Transparency Unit) -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%;">
+        <!-- Right: Ministry of Finance Logo ONLY -->
+        <div style="flex: 0 0 auto; background: rgba(255, 255, 255, 0.12); backdrop-filter: blur(8px); border-radius: 50%; padding: 4px; border: 2px solid rgba(245, 158, 11, 0.7); box-shadow: 0 4px 14px rgba(0,0,0,0.4);">
+            <img src="data:image/png;base64,{mof_badge_b64}" style="width: 78px; height: 78px; object-fit: contain;" alt="وزارة المالية" />
+        </div>
+
+        <!-- Left: Transparency Unit Logo ONLY -->
+        <div style="flex: 0 0 auto; background: rgba(255, 255, 255, 0.12); backdrop-filter: blur(8px); border-radius: 50%; padding: 4px; border: 2px solid rgba(245, 158, 11, 0.7); box-shadow: 0 4px 14px rgba(0,0,0,0.4);">
+            <img src="data:image/png;base64,{trans_badge_b64}" style="width: 78px; height: 78px; object-fit: contain;" alt="وحدة الشفافية والمشاركة المجتمعية" />
+        </div>
+    </div>
+
+    <!-- Bottom Row: Title Horizontally across with year underneath -->
+    <div style="width: 100%; text-align: center; margin-top: auto; padding-top: 14px; padding-bottom: 6px;">
+        <div style="display: inline-block; text-align: center; background: rgba(15, 23, 42, 0.70); backdrop-filter: blur(10px); padding: 8px 36px; border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 6px 20px rgba(0,0,0,0.45);">
+            <h1 style="text-align: center; color: #ffffff; margin: 0; font-size: 1.75rem; font-weight: 800; letter-spacing: -0.2px; text-shadow: 0 2px 8px rgba(0,0,0,0.9); white-space: nowrap;">
+                منصة "حسبتك" — لوحة متابعة موازنة المواطن
+            </h1>
+            <div style="text-align: center; color: #f59e0b; margin-top: 2px; font-size: 1.25rem; font-weight: 800; letter-spacing: 1px; text-shadow: 0 2px 6px rgba(0,0,0,0.85);">
+                2026 / 2027
+            </div>
+        </div>
+    </div>
 </div>
-""", unsafe_allow_html=True)
+"""
+st.html(header_html)
 
 poll_engine = PollEngine()
 grounding_engine = GroundingEngine()
+
+# Sidebar: Welcome Message (without logos, exactly as requested)
+sidebar_header_html = """
+<div style="text-align: center; background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%); padding: 18px 14px; border-radius: 14px; margin-bottom: 20px; border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+    <div style="font-size: 1.02rem; font-weight: 700; color: #f8fafc; line-height: 1.6;">
+        مرحباً بك مع المستشار الرقمي لموازنة المواطن 2026/2027
+    </div>
+</div>
+"""
+st.sidebar.html(sidebar_header_html)
 
 # Sidebar Navigation
 st.sidebar.title("📌 أقسام المنظومة")
@@ -140,29 +180,105 @@ if page == "📊 نبض المواطن ومؤشرات OBS":
             df_poll = pd.DataFrame(stats["options"])
             df_poll = df_poll.rename(columns={"text": "الخيار", "votes": "الأصوات", "percentage": "النسبة %"})
 
-            col_chart, col_data = st.columns([3, 2])
-            with col_chart:
-                st.bar_chart(df_poll.set_index("الخيار")["الأصوات"])
-            with col_data:
-                st.dataframe(df_poll[["الخيار", "الأصوات", "النسبة %"]], width="stretch")
+            col_poll, col_demographics = st.columns(2)
+            with col_poll:
+                palette_bars = [
+                    ("linear-gradient(90deg, #0284c7 0%, #38bdf8 100%)", "#38bdf8", "rgba(56, 189, 248, 0.15)"),
+                    ("linear-gradient(90deg, #0369a1 0%, #0ea5e9 100%)", "#0ea5e9", "rgba(14, 165, 233, 0.15)"),
+                    ("linear-gradient(90deg, #4338ca 0%, #6366f1 100%)", "#818cf8", "rgba(129, 140, 248, 0.15)"),
+                    ("linear-gradient(90deg, #6d28d9 0%, #8b5cf6 100%)", "#a78bfa", "rgba(167, 139, 250, 0.15)"),
+                    ("linear-gradient(90deg, #d97706 0%, #f59e0b 100%)", "#f59e0b", "rgba(245, 158, 11, 0.15)")
+                ]
+                html_options = ""
+                for idx, row in df_poll.iterrows():
+                    grad, text_c, bg_pill = palette_bars[idx % len(palette_bars)]
+                    opt_text = row["الخيار"]
+                    votes_val = int(row["الأصوات"])
+                    pct_val = float(row["النسبة %"])
+                    bar_w = max(pct_val, 4.0) if votes_val > 0 else 0
+                    html_options += f"""
+                    <div style="margin-bottom: 12px; background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                            <div style="font-size: 0.96rem; font-weight: 700; color: #f8fafc; line-height: 1.5;">
+                                {opt_text}
+                            </div>
+                            <div style="font-size: 0.88rem; font-weight: 800; color: {text_c}; background: {bg_pill}; border: 1px solid {text_c}44; padding: 3px 12px; border-radius: 16px; white-space: nowrap;">
+                                {votes_val} أصوات ({pct_val:.1f}%)
+                            </div>
+                        </div>
+                        <div style="background: rgba(15, 23, 42, 0.7); border-radius: 8px; height: 12px; width: 100%; overflow: hidden; padding: 1px;">
+                            <div style="background: {grad}; width: {bar_w}%; height: 100%; border-radius: 6px; box-shadow: 0 0 8px {text_c}55;"></div>
+                        </div>
+                    </div>
+                    """
+                
+                poll_card_html = f"""
+                <div style="background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 16px; padding: 18px 20px; box-shadow: 0 8px 25px rgba(0,0,0,0.35); user-select: none;">
+                    <div style="font-size: 1.08rem; font-weight: 800; color: #f8fafc; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+                        🗳️ نتائج تصويت المواطنين على الأولويات
+                    </div>
+                    {html_options}
+                </div>
+                """
+                st.html(poll_card_html)
 
-        # Profile Distribution Analysis
-        st.markdown("#### 👥 توزيع المشاركين حسب الفئات الاجتماعية:")
-        try:
-            with open(poll_engine.votes_path, "r", encoding="utf-8") as f:
-                raw_votes = json.load(f)
-            if raw_votes:
-                df_v = pd.DataFrame(raw_votes)
-                prof_counts = df_v["user_profile"].value_counts().reset_index()
-                prof_counts.columns = ["الفئة", "العدد"]
-                st.dataframe(prof_counts, width="stretch")
-        except Exception:
-            st.info("لا توجد بيانات تفصيلية للفئات حالياً.")
+            with col_demographics:
+                try:
+                    with open(poll_engine.votes_path, "r", encoding="utf-8") as f:
+                        raw_votes = json.load(f)
+                    if raw_votes:
+                        df_v = pd.DataFrame(raw_votes)
+                        prof_counts = df_v["user_profile"].value_counts().reset_index()
+                        prof_counts.columns = ["الفئة الاجتماعية", "عدد المشاركين"]
+                        total_prof = prof_counts["عدد المشاركين"].sum()
+                        prof_counts["النسبة %"] = (prof_counts["عدد المشاركين"] / total_prof * 100).round(1)
+
+                        prof_palette = [
+                            ("linear-gradient(90deg, #d97706 0%, #f59e0b 100%)", "#f59e0b", "rgba(245, 158, 11, 0.15)"),
+                            ("linear-gradient(90deg, #0284c7 0%, #38bdf8 100%)", "#38bdf8", "rgba(56, 189, 248, 0.15)"),
+                            ("linear-gradient(90deg, #059669 0%, #10b981 100%)", "#10b981", "rgba(16, 185, 129, 0.15)"),
+                            ("linear-gradient(90deg, #7c3aed 0%, #a855f7 100%)", "#a855f7", "rgba(168, 85, 247, 0.15)"),
+                            ("linear-gradient(90deg, #db2777 0%, #ec4899 100%)", "#ec4899", "rgba(236, 72, 153, 0.15)")
+                        ]
+                        html_prof_rows = ""
+                        for idx, row in prof_counts.iterrows():
+                            p_grad, p_col, p_bg = prof_palette[idx % len(prof_palette)]
+                            p_name = row["الفئة الاجتماعية"]
+                            p_cnt = int(row["عدد المشاركين"])
+                            p_pct = float(row["النسبة %"])
+                            p_bar_w = max(p_pct, 4.0)
+                            html_prof_rows += f"""
+                            <div style="margin-bottom: 12px; background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px 16px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                                    <span style="font-size: 0.96rem; font-weight: 700; color: #f1f5f9; line-height: 1.5;">👤 {p_name}</span>
+                                    <span style="font-size: 0.88rem; font-weight: 800; color: {p_col}; background: {p_bg}; border: 1px solid {p_col}44; padding: 3px 12px; border-radius: 16px; white-space: nowrap;">
+                                        {p_cnt} مشارك ({p_pct:.1f}%)
+                                    </span>
+                                </div>
+                                <div style="background: rgba(15, 23, 42, 0.7); border-radius: 8px; height: 12px; width: 100%; overflow: hidden; padding: 1px;">
+                                    <div style="background: {p_grad}; width: {p_bar_w}%; height: 100%; border-radius: 6px; box-shadow: 0 0 8px {p_col}55;"></div>
+                                </div>
+                            </div>
+                            """
+                        prof_card_html = f"""
+                        <div style="background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 16px; padding: 18px 20px; box-shadow: 0 8px 25px rgba(0,0,0,0.35); user-select: none;">
+                            <div style="font-size: 1.08rem; font-weight: 800; color: #f8fafc; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+                                👥 توزيع المشاركين حسب الفئات الاجتماعية
+                            </div>
+                            {html_prof_rows}
+                        </div>
+                        """
+                        st.html(prof_card_html)
+                    else:
+                        st.info("لا توجد بيانات تفصيلية للفئات حالياً.")
+                except Exception:
+                    st.info("لا توجد بيانات تفصيلية للفئات حالياً.")
 
 # PAGE 2: مخصصات موازنة 2026/2027
 elif page == "💰 مخصصات موازنة 2026/2027":
     st.subheader("🏛️ أبرز المخصصات الحيوية بموازنة المواطن 2026/2027")
-    
+    st.caption("الاستحقاقات الدستورية ومخصصات التنمية البشرية والحماية الاجتماعية المعتمدة:")
+
     allocations = [
         {"القطاع": "التعليم والبحث العلمي", "المخصصات (مليار جنيه)": 1229.7, "النسبة من الناتج المحلي": "6.0%", "النمو السنوي": "+17.9%"},
         {"القطاع": "الصحة والخدمات الطبية", "المخصصات (مليار جنيه)": 862.9, "النسبة من الناتج المحلي": "4.2%", "النمو السنوي": "+39.6%"},
@@ -171,12 +287,69 @@ elif page == "💰 مخصصات موازنة 2026/2027":
         {"القطاع": "دعم الأنشطة الاقتصادية والإنتاج", "المخصصات (مليار جنيه)": 90.0, "النسبة من الناتج المحلي": "-", "النمو السنوي": "مبادرات جديدة"}
     ]
     df_alloc = pd.DataFrame(allocations)
-    
-    col_a, col_b = st.columns([3, 2])
-    with col_a:
-        st.bar_chart(df_alloc.set_index("القطاع")["المخصصات (مليار جنيه)"])
-    with col_b:
-        st.table(df_alloc)
+
+    # 4 Quick KPI Highlight Cards at the top
+    k1, k2, k3, k4 = st.columns(4)
+    with k1:
+        st.metric(label="التعليم والبحث العلمي", value="1,229.7 مليار ج.م", delta="+17.9% استحقاق دستوري")
+    with k2:
+        st.metric(label="الصحة والتأمين الصحي", value="862.9 مليار ج.م", delta="+39.6% أعلى نمو سنوي")
+    with k3:
+        st.metric(label="الدعم والمنح الاجتماعية", value="836.8 مليار ج.م", delta="+12.7% حماية اجتماعية")
+    with k4:
+        st.metric(label="الأجور وتعويضات العاملين", value="822.8 مليار ج.م", delta="+21.2% حزمة تبكير يوليو")
+
+    st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
+
+    sector_styles = [
+        {"icon": "📚", "grad": "linear-gradient(90deg, #0284c7 0%, #38bdf8 100%)", "color": "#38bdf8", "bg": "rgba(56, 189, 248, 0.15)"},
+        {"icon": "🏥", "grad": "linear-gradient(90deg, #059669 0%, #10b981 100%)", "color": "#10b981", "bg": "rgba(16, 185, 129, 0.15)"},
+        {"icon": "🍞", "grad": "linear-gradient(90deg, #d97706 0%, #f59e0b 100%)", "color": "#f59e0b", "bg": "rgba(245, 158, 11, 0.15)"},
+        {"icon": "💼", "grad": "linear-gradient(90deg, #4f46e5 0%, #818cf8 100%)", "color": "#818cf8", "bg": "rgba(129, 140, 248, 0.15)"},
+        {"icon": "🏭", "grad": "linear-gradient(90deg, #db2777 0%, #ec4899 100%)", "color": "#ec4899", "bg": "rgba(236, 72, 153, 0.15)"}
+    ]
+    max_alloc = max(df_alloc["المخصصات (مليار جنيه)"])
+    html_alloc_rows = ""
+    for idx, row in df_alloc.iterrows():
+        style = sector_styles[idx % len(sector_styles)]
+        sec_name = row["القطاع"]
+        sec_val = float(row["المخصصات (مليار جنيه)"])
+        sec_gdp = row["النسبة من الناتج المحلي"]
+        sec_growth = row["النمو السنوي"]
+        bar_w = (sec_val / max_alloc) * 100
+        
+        gdp_badge = f"""<span style="font-size: 0.82rem; color: #94a3b8; background: rgba(255,255,255,0.06); padding: 3px 10px; border-radius: 12px; margin-right: 6px;">{sec_gdp} الناتج (GDP)</span>""" if sec_gdp != "-" else ""
+        growth_badge = f"""<span style="font-size: 0.82rem; color: #34d399; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); padding: 3px 10px; border-radius: 12px;">{sec_growth}</span>"""
+
+        html_alloc_rows += f"""
+        <div style="margin-bottom: 14px; background: rgba(30, 41, 59, 0.45); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 14px 18px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                <div style="font-size: 1.02rem; font-weight: 700; color: #f8fafc;">
+                    {style['icon']} {sec_name}
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    {gdp_badge}
+                    {growth_badge}
+                    <span style="font-size: 0.95rem; font-weight: 800; color: {style['color']}; background: {style['bg']}; border: 1px solid {style['color']}44; padding: 3px 12px; border-radius: 16px; white-space: nowrap;">
+                        {sec_val:,.1f} مليار ج.م
+                    </span>
+                </div>
+            </div>
+            <div style="background: rgba(15, 23, 42, 0.7); border-radius: 8px; height: 14px; width: 100%; overflow: hidden; padding: 1px;">
+                <div style="background: {style['grad']}; width: {bar_w}%; height: 100%; border-radius: 6px; box-shadow: 0 0 10px {style['color']}55;"></div>
+            </div>
+        </div>
+        """
+
+    alloc_card_html = f"""
+    <div style="background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 16px; padding: 20px 22px; box-shadow: 0 8px 25px rgba(0,0,0,0.35); user-select: none; margin-bottom: 20px;">
+        <div style="font-size: 1.15rem; font-weight: 800; color: #f8fafc; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+            🏛️ توزيع مخصصات القطاعات الحيوية بموازنة المواطن 2026/2027
+        </div>
+        {html_alloc_rows}
+    </div>
+    """
+    st.html(alloc_card_html)
 
 # PAGE 3: مستكشف الأرقام المؤكدة
 elif page == "🔍 مستكشف الأرقام المؤكدة (Facts Ledger)":
@@ -199,7 +372,7 @@ elif page == "🔍 مستكشف الأرقام المؤكدة (Facts Ledger)":
         if search_query:
             df_facts = df_facts[df_facts.apply(lambda row: search_query.lower() in row.to_string().lower(), axis=1)]
             
-        st.dataframe(df_facts, width="stretch", height=500)
+        st.dataframe(df_facts, hide_index=True, use_container_width=True, height=500)
 
 # PAGE 4: محاكي المحادثة والتحقق
 elif page == "💬 محاكي المحادثة والتحقق (Live Demo)":
@@ -450,9 +623,10 @@ elif page == "💬 محاكي المحادثة والتحقق (Live Demo)":
                     with col_opts[idx]:
                         if st.button(f"🔘 {opt['text_ar']}", key=f"acc_vote_{opt['id']}", use_container_width=True):
                             vote_res = poll_engine.record_vote("accessible_user", active_poll["id"], opt["id"], "مواطن")
-                            st.success(vote_res["reply"])
+                            reply_msg = vote_res.get("message") or vote_res.get("reply") or "تم تسجيل مشاركتك بنجاح!"
+                            st.success(reply_msg)
                             try:
-                                v_audio = text_to_speech(vote_res["reply"])
+                                v_audio = text_to_speech(reply_msg)
                                 if v_audio and os.path.exists(v_audio):
                                     with open(v_audio, "rb") as f:
                                         st.audio(f.read(), format="audio/mp3")

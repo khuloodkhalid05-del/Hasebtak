@@ -109,7 +109,7 @@ def health_check():
 
 
 @app.post("/api/chat")
-async def chat_api(req: ChatRequest):
+def chat_api(req: ChatRequest):
     """
     Direct Chat API endpoint for Web UI, Mobile Apps, or testing.
     """
