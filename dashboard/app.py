@@ -39,7 +39,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom Styling for modern Egyptian Government look
+# Custom Styling for modern Egyptian Government look + Full Mobile Responsiveness
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
@@ -47,7 +47,14 @@ st.markdown("""
         font-family: 'Cairo', sans-serif;
         direction: rtl;
         text-align: right;
+        box-sizing: border-box;
     }
+    
+    /* Prevent horizontal overflow causing mobile misalignment */
+    html, body, [data-testid="stAppViewContainer"] {
+        overflow-x: hidden !important;
+    }
+
     .metric-card {
         background: #f8fafc;
         border: 1px solid #e2e8f0;
@@ -79,6 +86,91 @@ st.markdown("""
     .box-green { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
     .box-orange { background: linear-gradient(135deg, #f12711 0%, #f5af19 100%); }
     .box-purple { background: linear-gradient(135deg, #8e2de2 0%, #4a00e0 100%); }
+
+    /* =========================================================================
+       📱 MOBILE-FIRST ADAPTIVE RULES (max-width: 768px)
+       ========================================================================= */
+    @media (max-width: 768px) {
+        /* Container padding */
+        .block-container {
+            padding-left: 0.75rem !important;
+            padding-right: 0.75rem !important;
+            padding-top: 1rem !important;
+            padding-bottom: 2rem !important;
+            max-width: 100% !important;
+        }
+
+        /* Automatically stack columns vertically on mobile so buttons and cards don't get squished */
+        div[data-testid="column"] {
+            min-width: 100% !important;
+            flex: 1 1 100% !important;
+            width: 100% !important;
+            margin-bottom: 10px !important;
+        }
+
+        /* Buttons: full-width, auto-height, wrap long Arabic text without truncation */
+        div[data-testid="stButton"] button {
+            width: 100% !important;
+            white-space: normal !important;
+            word-wrap: break-word !important;
+            word-break: normal !important;
+            height: auto !important;
+            min-height: 48px !important;
+            padding: 10px 14px !important;
+            font-size: 0.95rem !important;
+            line-height: 1.45 !important;
+        }
+
+        /* Responsive Banner Header */
+        .mof-header-card {
+            min-height: 160px !important;
+            padding: 12px 14px !important;
+            border-radius: 16px !important;
+            margin-bottom: 16px !important;
+        }
+        .header-logo-wrapper img {
+            width: 52px !important;
+            height: 52px !important;
+        }
+        .header-title-pill {
+            padding: 8px 14px !important;
+            max-width: 100% !important;
+            border-radius: 16px !important;
+        }
+        .header-main-h1 {
+            font-size: 1.15rem !important;
+            white-space: normal !important;
+            line-height: 1.4 !important;
+        }
+        .header-year-sub {
+            font-size: 1.05rem !important;
+            margin-top: 1px !important;
+        }
+
+        /* Metric cards */
+        div[data-testid="stMetric"] {
+            background: rgba(15, 23, 42, 0.45) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            border-radius: 12px !important;
+            padding: 12px 14px !important;
+            margin-bottom: 8px !important;
+        }
+        div[data-testid="stMetricValue"] {
+            font-size: 1.45rem !important;
+        }
+
+        /* Accessible Boxes */
+        .accessible-box {
+            padding: 14px 12px !important;
+            font-size: 1.02rem !important;
+            margin-bottom: 8px !important;
+        }
+
+        /* Audio element */
+        audio {
+            width: 100% !important;
+        }
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -86,27 +178,27 @@ st.markdown("""
 bg_banner_css = f"background: linear-gradient(180deg, rgba(15, 23, 42, 0.35) 0%, rgba(15, 23, 42, 0.15) 50%, rgba(15, 23, 42, 0.65) 100%), url('data:image/jpeg;base64,{hero_bg_b64}') center 35% / cover no-repeat;" if hero_bg_b64 else "background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);"
 
 header_html = f"""
-<div style="{bg_banner_css} border: 1.5px solid rgba(217, 119, 6, 0.65); border-radius: 20px; min-height: 240px; padding: 20px 24px; margin-bottom: 24px; box-shadow: 0 14px 35px rgba(0,0,0,0.4); display: flex; flex-direction: column; justify-content: space-between; direction: rtl; position: relative;">
+<div class="mof-header-card" style="{bg_banner_css} border: 1.5px solid rgba(217, 119, 6, 0.65); border-radius: 20px; min-height: 240px; padding: 20px 24px; margin-bottom: 24px; box-shadow: 0 14px 35px rgba(0,0,0,0.4); display: flex; flex-direction: column; justify-content: space-between; direction: rtl; position: relative;">
     <!-- Top Row: ONLY the two circular logos (Right: MOF, Left: Transparency Unit) -->
     <div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%;">
         <!-- Right: Ministry of Finance Logo ONLY -->
-        <div style="flex: 0 0 auto; background: rgba(255, 255, 255, 0.12); backdrop-filter: blur(8px); border-radius: 50%; padding: 4px; border: 2px solid rgba(245, 158, 11, 0.7); box-shadow: 0 4px 14px rgba(0,0,0,0.4);">
+        <div class="header-logo-wrapper" style="flex: 0 0 auto; background: rgba(255, 255, 255, 0.12); backdrop-filter: blur(8px); border-radius: 50%; padding: 4px; border: 2px solid rgba(245, 158, 11, 0.7); box-shadow: 0 4px 14px rgba(0,0,0,0.4);">
             <img src="data:image/png;base64,{mof_badge_b64}" style="width: 78px; height: 78px; object-fit: contain;" alt="وزارة المالية" />
         </div>
 
         <!-- Left: Transparency Unit Logo ONLY -->
-        <div style="flex: 0 0 auto; background: rgba(255, 255, 255, 0.12); backdrop-filter: blur(8px); border-radius: 50%; padding: 4px; border: 2px solid rgba(245, 158, 11, 0.7); box-shadow: 0 4px 14px rgba(0,0,0,0.4);">
+        <div class="header-logo-wrapper" style="flex: 0 0 auto; background: rgba(255, 255, 255, 0.12); backdrop-filter: blur(8px); border-radius: 50%; padding: 4px; border: 2px solid rgba(245, 158, 11, 0.7); box-shadow: 0 4px 14px rgba(0,0,0,0.4);">
             <img src="data:image/png;base64,{trans_badge_b64}" style="width: 78px; height: 78px; object-fit: contain;" alt="وحدة الشفافية والمشاركة المجتمعية" />
         </div>
     </div>
 
     <!-- Bottom Row: Title Horizontally across with year underneath -->
     <div style="width: 100%; text-align: center; margin-top: auto; padding-top: 14px; padding-bottom: 6px;">
-        <div style="display: inline-block; text-align: center; background: rgba(15, 23, 42, 0.70); backdrop-filter: blur(10px); padding: 8px 36px; border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 6px 20px rgba(0,0,0,0.45);">
-            <h1 style="text-align: center; color: #ffffff; margin: 0; font-size: 1.75rem; font-weight: 800; letter-spacing: -0.2px; text-shadow: 0 2px 8px rgba(0,0,0,0.9); white-space: nowrap;">
+        <div class="header-title-pill" style="display: inline-block; text-align: center; background: rgba(15, 23, 42, 0.70); backdrop-filter: blur(10px); padding: 8px 36px; border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 6px 20px rgba(0,0,0,0.45);">
+            <h1 class="header-main-h1" style="text-align: center; color: #ffffff; margin: 0; font-size: 1.75rem; font-weight: 800; letter-spacing: -0.2px; text-shadow: 0 2px 8px rgba(0,0,0,0.9); white-space: nowrap;">
                 منصة "حسبتك" — لوحة متابعة موازنة المواطن
             </h1>
-            <div style="text-align: center; color: #f59e0b; margin-top: 2px; font-size: 1.25rem; font-weight: 800; letter-spacing: 1px; text-shadow: 0 2px 6px rgba(0,0,0,0.85);">
+            <div class="header-year-sub" style="text-align: center; color: #f59e0b; margin-top: 2px; font-size: 1.25rem; font-weight: 800; letter-spacing: 1px; text-shadow: 0 2px 6px rgba(0,0,0,0.85);">
                 2026 / 2027
             </div>
         </div>
