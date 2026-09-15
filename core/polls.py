@@ -78,11 +78,24 @@ class PollEngine:
         # Check if already voted
         for vote in votes:
             if vote.get("poll_id") == poll_id and vote.get("user_hash") == user_hash:
-                return {
-                    "success": False,
-                    "message": "شكراً لمشاركتك! لقد سجلت رأيك بالفعل في هذا الاستطلاع سابقاً 🗳️",
-                    "already_voted": True
-                }
+                if vote.get("option_id") == option_id:
+                    return {
+                        "success": True,
+                        "message": "شكراً لمشاركتك! لقد قمت باختيار هذا البند بالفعل في استطلاع هذا الأسبوع 🗳️",
+                        "already_voted": True
+                    }
+                else:
+                    vote["option_id"] = option_id
+                    vote["user_profile"] = user_profile or "مواطن"
+                    vote["timestamp"] = datetime.now().isoformat()
+                    with open(self.votes_path, "w", encoding="utf-8") as f:
+                        json.dump(votes, f, ensure_ascii=False, indent=2)
+                    return {
+                        "success": True,
+                        "message": "تم تحديث اختيارك في الاستطلاع بنجاح! صوتك بيوصل لصناع القرار في وزارة المالية 🇪🇬",
+                        "already_voted": False,
+                        "updated": True
+                    }
 
         new_vote = {
             "poll_id": poll_id,

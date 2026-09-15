@@ -620,7 +620,10 @@ elif page == "💬 محاكي المحادثة والتحقق (Live Demo)":
                 for idx, opt in enumerate(active_poll["options"]):
                     with col_opts[idx]:
                         if st.button(f"🔘 {opt['text_ar']}", key=f"acc_vote_{opt['id']}", use_container_width=True):
-                            vote_res = poll_engine.record_vote("accessible_user", active_poll["id"], opt["id"], "مواطن")
+                            if "poll_user_id" not in st.session_state:
+                                import uuid
+                                st.session_state.poll_user_id = f"web_{uuid.uuid4().hex[:10]}"
+                            vote_res = poll_engine.record_vote(st.session_state.poll_user_id, active_poll["id"], opt["id"], "مواطن")
                             reply_msg = vote_res.get("message") or vote_res.get("reply") or "تم تسجيل مشاركتك بنجاح!"
                             st.success(reply_msg)
                             try:
