@@ -370,6 +370,69 @@ def handle_chat_question(message: dict):
 
 
 # =====================================================================
+def process_telegram_update(u: dict):
+    """
+    Unified Telegram update processor.
+    Handles start screen, inline poll voting, budget transitions, eligibility, and Q&A.
+    Can be called by both long-polling (run_bot.py) and serverless webhook (app.py).
+    """
+    # 1. Handle Callback Queries (Inline Button clicks)
+    if "callback_query" in u:
+        cb = u["callback_query"]
+        cb_data = cb.get("data", "")
+        chat_id = cb.get("message", {}).get("chat", {}).get("id")
+
+        if cb_data.startswith("vote:"):
+            handle_vote(cb)
+        elif cb_data.startswith("budget:"):
+            handle_budget_info(cb)
+        elif cb_data.startswith("eligible:"):
+            handle_eligibility(cb)
+        elif cb_data.startswith("faq:"):
+            handle_faq_answer(cb)
+        elif cb_data.startswith("profile:"):
+            handle_profile_selection(cb)
+        elif cb_data == "menu:poll":
+            answer_callback_query(cb.get("id"))
+            poll = db.get_current_poll()
+            q = poll.get("question", "ما هي أولويتك في الموازنة؟") if poll else "ما هي أولويتك؟"
+            send_message(chat_id, f"📊 *استطلاع الأسبوع (نبض المواطن):*\n\n*{q}*\n\n👇 *اضغط على خيارك لتسجيل رأيك فوراً:*", reply_markup=get_poll_keyboard())
+        elif cb_data == "menu:eligible":
+            answer_callback_query(cb.get("id"))
+            text = "🤝 *دليل 'هل تستحق؟' للحماية الاجتماعية ورعاية المواطنين*\n\nأقدر أساعدك تعرف برامج الدعم الرسمية بموازنة 2026/2027 وإزاي تقدم فيها.\n\n👇 *اختر البرنامج الذي ترغب بالاستعلام عنه:*"
+            send_message(chat_id, text, reply_markup=get_eligibility_menu_keyboard())
+        elif cb_data == "menu:faq":
+            answer_callback_query(cb.get("id"))
+            text = "💡 *أرقام الموازنة السريعة 2026/2027*\n\nاضغط على أي بند من البنود التالية لمعرفة المخصصات المعتمدة بالأرقام الرسمية:"
+            send_message(chat_id, text, reply_markup=get_faq_keyboard())
+        elif cb_data == "menu:main":
+            answer_callback_query(cb.get("id"))
+            handle_start(chat_id)
+        return
+
+    # 2. Handle Messages
+    if "message" in u:
+        msg = u["message"]
+        chat_id = msg.get("chat", {}).get("id")
+        text = msg.get("text", "").strip()
+
+        if not text:
+            return
+
+        if text.lower() in ["/start", "/help", "ابدأ", "البداية", "القائمة", "start", "help", "menu", "سلام عليكم", "السلام عليكم", "مرحبا"]:
+            handle_start(chat_id)
+        elif text.startswith("/poll") or text == "استطلاع":
+            poll = db.get_current_poll()
+            q = poll.get("question", "ما هي أولويتك في الموازنة؟") if poll else "ما هي أولويتك؟"
+            send_message(chat_id, f"📊 *استطلاع الأسبوع (نبض المواطن):*\n\n*{q}*\n\n👇 *اضغط على خيارك لتسجيل رأيك فوراً:*", reply_markup=get_poll_keyboard())
+        elif text.startswith("/eligible") or "هل تستحق" in text or "دليل الحماية" in text:
+            text_msg = "🤝 *دليل 'هل تستحق؟' للحماية الاجتماعية ورعاية المواطنين*\n\n👇 *اختر البرنامج الذي ترغب بالاستعلام عنه:*"
+            send_message(chat_id, text_msg, reply_markup=get_eligibility_menu_keyboard())
+        else:
+            handle_chat_question(msg)
+
+
+# =====================================================================
 # Main Polling Loop
 # =====================================================================
 
@@ -394,61 +457,7 @@ def run():
             updates = data.get("result", [])
             for u in updates:
                 offset = u["update_id"] + 1
-
-                # 1. Handle Callback Queries (Inline Button clicks)
-                if "callback_query" in u:
-                    cb = u["callback_query"]
-                    cb_data = cb.get("data", "")
-                    chat_id = cb.get("message", {}).get("chat", {}).get("id")
-
-                    if cb_data.startswith("vote:"):
-                        handle_vote(cb)
-                    elif cb_data.startswith("budget:"):
-                        handle_budget_info(cb)
-                    elif cb_data.startswith("eligible:"):
-                        handle_eligibility(cb)
-                    elif cb_data.startswith("faq:"):
-                        handle_faq_answer(cb)
-                    elif cb_data.startswith("profile:"):
-                        handle_profile_selection(cb)
-                    elif cb_data == "menu:poll":
-                        answer_callback_query(cb.get("id"))
-                        poll = db.get_current_poll()
-                        q = poll.get("question", "ما هي أولويتك في الموازنة؟") if poll else "ما هي أولويتك؟"
-                        send_message(chat_id, f"📊 *استطلاع الأسبوع (نبض المواطن):*\n\n*{q}*\n\n👇 *اضغط على خيارك لتسجيل رأيك فوراً:*", reply_markup=get_poll_keyboard())
-                    elif cb_data == "menu:eligible":
-                        answer_callback_query(cb.get("id"))
-                        text = "🤝 *دليل 'هل تستحق؟' للحماية الاجتماعية ورعاية المواطنين*\n\nأقدر أساعدك تعرف برامج الدعم الرسمية بموازنة 2026/2027 وإزاي تقدم فيها.\n\n👇 *اختر البرنامج الذي ترغب بالاستعلام عنه:*"
-                        send_message(chat_id, text, reply_markup=get_eligibility_menu_keyboard())
-                    elif cb_data == "menu:faq":
-                        answer_callback_query(cb.get("id"))
-                        text = "💡 *أرقام الموازنة السريعة 2026/2027*\n\nاضغط على أي بند من البنود التالية لمعرفة المخصصات المعتمدة بالأرقام الرسمية:"
-                        send_message(chat_id, text, reply_markup=get_faq_keyboard())
-                    elif cb_data == "menu:main":
-                        answer_callback_query(cb.get("id"))
-                        handle_start(chat_id)
-                    continue
-
-                # 2. Handle Messages
-                if "message" in u:
-                    msg = u["message"]
-                    chat_id = msg.get("chat", {}).get("id")
-                    text = msg.get("text", "").strip()
-
-                    if not text:
-                        continue
-
-                    if text.lower() in ["/start", "/help", "ابدأ", "البداية", "القائمة", "start", "help", "menu", "سلام عليكم", "السلام عليكم", "مرحبا"]:
-                        handle_start(chat_id)
-                    elif text.startswith("/poll") or text == "استطلاع":
-                        poll = db.get_current_poll()
-                        q = poll.get("question", "ما هي أولويتك في الموازنة؟") if poll else "ما هي أولويتك؟"
-                        send_message(chat_id, f"📊 *استطلاع الأسبوع (نبض المواطن):*\n\n*{q}*\n\n👇 *اضغط على خيارك لتسجيل رأيك فوراً:*", reply_markup=get_poll_keyboard())
-                    elif text.startswith("/eligible") or "هل تستحق" in text or "دليل الحماية" in text:
-                        text_msg = "🤝 *دليل 'هل تستحق؟' للحماية الاجتماعية ورعاية المواطنين*\n\n👇 *اختر البرنامج الذي ترغب بالاستعلام عنه:*"
-                        send_message(chat_id, text_msg, reply_markup=get_eligibility_menu_keyboard())
-                    else:
-                        handle_chat_question(msg)
+                process_telegram_update(u)
 
         except requests.exceptions.RequestException as e:
             logger.warning(f"Network polling warning: {e}")

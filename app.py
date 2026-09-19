@@ -207,39 +207,19 @@ def get_budget_topic(topic: str):
 
 # Channel Webhooks
 @app.post("/webhook/telegram")
-async def telegram_webhook(req: Request, background_tasks: BackgroundTasks):
+async def telegram_webhook(req: Request):
     """
-    Webhook handler for Telegram Bot (Free-Forever Channel).
+    Webhook handler for Telegram Bot (24/7 Free-Forever Serverless on Vercel).
+    Dispatches directly through Hasebtak's unified interactive bot update processor.
     """
     try:
         update_data = await req.json()
-        incoming = telegram_adapter.parse_incoming(update_data)
-        if not incoming:
-            return {"ok": True}
-
-        # Process message through Hasebtak core
-        res = core.process_message(incoming.user_id, incoming.text)
-        reply_text = res.get("reply", "")
-
-        # Format buttons if available
-        buttons = []
-        if res.get("options"):
-            buttons = [
-                {"id": opt.get("id", opt.get("goto", "")), "label": opt.get("label", opt.get("label_ar", ""))}
-                for opt in res["options"]
-            ]
-
-        outgoing = OutgoingMessage(
-            user_id=incoming.user_id,
-            text=reply_text,
-            buttons=buttons if buttons else None
-        )
-
-        background_tasks.add_task(telegram_adapter.send_response, outgoing)
+        from channels.run_bot import process_telegram_update
+        process_telegram_update(update_data)
         return {"ok": True}
     except Exception as e:
-        logger.error(f"Telegram webhook error: {e}")
-        return {"ok": False, "error": str(e)}
+        logger.error(f"Telegram webhook error: {e}", exc_info=True)
+        return {"ok": True}
 
 
 @app.get("/webhook/whatsapp")

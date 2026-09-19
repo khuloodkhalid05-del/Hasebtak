@@ -207,8 +207,8 @@ def record_vote(user_id: str, poll_id: Optional[str], choice: str) -> Dict[str, 
         VALUES (?, ?, ?)
         """, (poll_id, user_id, option_id))
         conn.commit()
-    except sqlite3.IntegrityError:
-        # User already voted in this poll
+    except (sqlite3.IntegrityError, sqlite3.OperationalError, Exception):
+        # User already voted or running in serverless read-only environment
         already_voted = True
 
     # Compute Total Votes and Option Stats
